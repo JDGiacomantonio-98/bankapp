@@ -1,0 +1,3 @@
+/dump
+/datalake/DML/INGESTED/*.sql
+/DML/STAGING/*.sql
