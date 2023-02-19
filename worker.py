@@ -5,7 +5,7 @@ from random import uniform
 import io
 
 sql_db_instance = "bankapp"
-sql_db_env = "prd"
+sql_db_env = "dev"
 sql_tablename = "TRANSACTIONS_DUMP"
 header = "FLOW_ID, EXEC, PROVIDER, TR_DATE, TR_WEEK, TR_MONTH, TR_DAY, TR_WEEKDAY, TR_HOUR, TR_TYPE, TR_LOCATION, TR_BENEFICIARY, TR_METHOD, TR_INFO, TR_VALUE, TR_UOM"
 provider = "MPS"
