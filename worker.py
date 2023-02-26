@@ -1,8 +1,9 @@
 import openpyxl as pyxl
 from time import time
-from os import path, mkdir, rename
+from os import path, getenv, mkdir, rename
 from random import uniform
-import io
+from io import BytesIO
+import webbrowser
 
 sql_db_instance = "bankapp"
 sql_db_env = "dev"
@@ -10,11 +11,11 @@ sql_tablename = "TRANSACTIONS_DUMP"
 header = "FLOW_ID, EXEC, PROVIDER, TR_DATE, TR_WEEK, TR_MONTH, TR_DAY, TR_WEEKDAY, TR_HOUR, TR_TYPE, TR_LOCATION, TR_BENEFICIARY, TR_METHOD, TR_INFO, TR_VALUE, TR_UOM"
 provider = "MPS"
 
-app_uri = "C:\\Users\\Jacopo\\Desktop\\code-workbench\\"+sql_db_instance
+app_uri = path.join(getenv('USERPROFILE'),'Desktop','code-workbench',sql_db_instance)
 
-sql_dump_uri = app_uri+"\\"+sql_db_env+"\\datalake\\DML\\STAGING"
-raw_dump_uri = app_uri+"\\"+sql_db_env+"\\dump\\"+provider
-csv_dump_uri = app_uri+"\\"+sql_db_env+"\\dump\\"+provider+"\\csv"
+sql_dump_uri = path.join(app_uri,sql_db_env,'datalake','DML','STAGING')
+raw_dump_uri = path.join(app_uri,sql_db_env,'dump','provider')
+csv_dump_uri = path.join(app_uri,sql_db_env,'dump','provider','csv')
 
 revenues_owner = "SELF"
 
@@ -25,11 +26,16 @@ for i in range(0, raw_dump_uri.split(app_uri)[1].count("\\")):
 	mkdir(path.join(app_uri,"\\".join(raw_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(app_uri,"\\".join(raw_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1])))) else next
 mkdir(csv_dump_uri) if not(path.isdir(csv_dump_uri)) else next
 
+landed_file_uri  = path.join(getenv('USERPROFILE'),'Downloads','I miei movimenti conto.xlsx')
 
-landed_file_uri = "C:\\Users\\Jacopo\\Downloads\\I miei movimenti conto.xlsx"
-
-with open(landed_file_uri, "rb") as f:
-	wb = pyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
+try:
+	with open(landed_file_uri, "rb") as f:
+		wb = pyxl.load_workbook(BytesIO(f.read()), data_only=True)
+except FileNotFoundError:
+	print()
+	print("No new transaction file available in the Download folder. Please download it from MPS home banking website.")
+	webbrowser.open_new("https://digital.mps.it/pri/login/home_mobile.jsp?_ga=2.215198551.1509105742.1620041788-785024715.1610638296")
+	quit()
 
 data = wb[wb.sheetnames[0]]
 

@@ -1,12 +1,14 @@
 from mysql.connector import connect, Error as SQLError
-from os import path, mkdir, listdir, rename
+from os import getenv,path, mkdir, listdir, rename
 
 sql_db_instance = "bankapp"
 sql_db_env = "dev"
-app_uri = "C:\\Users\\Jacopo\\Desktop\\code-workbench\\"+sql_db_instance
-ddl_location= app_uri+"\\"+sql_db_env+"\\datalake\\DDL"
-dml_staging_location= app_uri+"\\"+sql_db_env+"\\datalake\\DML\\STAGING"
-dml_ingested_location= app_uri+"\\"+sql_db_env+"\\datalake\\DML\\INGESTED"
+
+app_uri = path.join(getenv('USERPROFILE'),'Desktop','code-workbench',sql_db_instance)
+
+ddl_location= path.join(app_uri,sql_db_env,'datalake','DDL')
+dml_staging_location= path.join(app_uri,sql_db_env,'datalake','DML','STAGING')
+dml_ingested_location= path.join(app_uri,sql_db_env,'datalake','DML','INGESTED')
 
 for i in range(0, dml_ingested_location.split(app_uri)[1].count("\\")):
 	mkdir(path.join(app_uri,"\\".join(dml_ingested_location.split(app_uri+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(app_uri,"\\".join(dml_ingested_location.split(app_uri+"\\")[1].split("\\")[0:i+1])))) else next
