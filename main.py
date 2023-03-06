@@ -17,54 +17,70 @@ try:
 	conn = connect(
 		host="127.0.0.1",
 		user="root",
-		passwd=input("db login psw: "),
-		database=sql_db_instance
+		passwd=input("db login psw: ")
 		)
+	cursor = conn.cursor()
+	cursor.execute(f"USE {sql_db_instance};")
 except SQLError as e:
 	print("MySQL error: ", e)
 	if e.errno == 1049:
 		if input(f"Create {sql_db_instance} db from scratch? (y/n): ") in "yY":
 			try:
-				conn = connect(
-					host="127.0.0.1",
-					user="root",
-					passwd=input("insert psw: ")
-				)
-			except SQLError as e:
-				print("MySQL: ", e)
-				quit()
-			else:
 				cursor = conn.cursor()
 				cursor.execute(f"CREATE DATABASE {sql_db_instance};") # creates db
-				cursor.execute(f"USE {sql_db_instance}")
+				cursor.execute(f"USE {sql_db_instance};")
 
 				# creates all tables
 				for file in listdir(ddl_location+"\\TABLES"):
+					if file == ".gitkeep":
+						continue
+
 					with open(ddl_location+"\\TABLES\\"+file,"r") as ddl:
 						cursor.execute(ddl.read())
 
 				# populates all tables for which dml exists
 				for file in listdir(dml_ingested_location):
+					if file == ".gitkeep":
+						continue
+
 					with open(dml_ingested_location+"\\"+file,"r") as dml:
 						for row in dml.readlines()[:-1]:
 							cursor.execute(row)
 						conn.commit()
-							
+
+				# populates all views for which dml exists
 				for file in listdir(dml_staging_location):
+					if file == ".gitkeep":
+						continue
+
 					with open(dml_staging_location+"\\"+file,"r") as dml:
 						for row in dml.readlines()[:-1]:
 							cursor.execute(row)
 						conn.commit()
 
-				# creates all procedures
-				for file in listdir(ddl_location+"\\PROCEDURES"):
-					with open(ddl_location+"\\PROCEDURES\\"+file,"r") as ddl:
+				# creates all views
+				for file in listdir(ddl_location+"\\VIEWS"):
+					if file == ".gitkeep":
+						continue
+
+					with open(ddl_location+"\\VIEWS\\"+file,"r") as ddl:
 						cursor.execute(ddl.read())
 
+				# creates all procedures
+				for file in listdir(ddl_location+"\\PROCEDURES"):
+					if file == ".gitkeep":
+						continue
+
+					with open(ddl_location+"\\PROCEDURES\\"+file,"r") as ddl:
+						cursor.execute(ddl.read())
 				conn.close()
 				
 				print("database created!")
-
+				
+			except SQLError as e:
+				print("MySQL: ", e)
+				quit()
+			else:
 				conn = connect(
 					host="127.0.0.1",
 					user="root",
@@ -72,15 +88,17 @@ except SQLError as e:
 					database=sql_db_instance
 				)
 				cursor=conn.cursor()
-				print("running ..")
+				print("populating ..")
 				cursor.callproc("update_transactions")
 				conn.commit()
 				print("db is up to date!")
 		else:
 			quit()
 else:
-	cursor = conn.cursor()
 	for filename in listdir(dml_staging_location):
+		if filename == ".gitkeep":
+			continue
+
 		with open(dml_staging_location+"\\"+filename,"r") as dml:
 			for row in dml.readlines()[:-1]:
 				cursor.execute(row)

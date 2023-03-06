@@ -1,4 +1,5 @@
-DROP PROCEDURE IF EXISTS update_transactions;
+DROP PROCEDURE IF EXISTS `update_transactions`;
+
 CREATE PROCEDURE update_transactions()
 BEGIN
 	# this procedures scans everytime the transactions_dump table to gather only the last updated transaction values

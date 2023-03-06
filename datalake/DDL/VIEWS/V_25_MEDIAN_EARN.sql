@@ -1,0 +1,89 @@
+CREATE OR REPLACE VIEW `MEDIAN_EARN` AS
+(
+
+	with MEDIAN_EARN_3M AS
+	(
+		select
+			AVG(EARN_3M) MEDIAN
+		from
+		(
+			SELECT
+				*,
+				MAX(RK) over (partition by true)/2 MEDIAN_POS
+			FROM 
+			(
+				SELECT 
+					EARN_3M,
+					ROW_NUMBER() OVER (PARTITION BY TRUE ORDER BY EARN_3M) RK
+				FROM EARNINGS
+				WHERE EARN_3M IS NOT NULL
+			) T
+		) T
+		WHERE
+			MEDIAN_POS = RK OR ABS(RK-MEDIAN_POS)=0.5
+	),
+	MEDIAN_EARN_6M AS
+	(
+		select
+			AVG(EARN_6M) MEDIAN
+		from
+		(
+			SELECT
+				*,
+				MAX(RK) over (partition by true)/2 MEDIAN_POS
+			FROM
+			(
+				SELECT 
+					EARN_6M,
+					ROW_NUMBER() OVER (PARTITION BY TRUE ORDER BY EARN_6M) RK
+				FROM EARNINGS
+				WHERE EARN_6M IS NOT NULL
+			) T
+		) T
+		WHERE MEDIAN_POS = RK OR ABS(RK-MEDIAN_POS)=0.5
+	),
+	MEDIAN_EARN_9M AS
+	(
+		select
+			AVG(EARN_9M) MEDIAN
+		from
+		(
+			SELECT
+				*,
+				MAX(RK) over (partition by true)/2 MEDIAN_POS
+			FROM (
+				SELECT 
+					EARN_9M,
+					ROW_NUMBER() OVER (PARTITION BY TRUE ORDER BY EARN_9M) RK
+				FROM EARNINGS
+				WHERE EARN_6M IS NOT NULL
+			) T
+		) T
+		WHERE MEDIAN_POS = RK OR ABS(RK-MEDIAN_POS)=0.5
+	),
+	MEDIAN_EARN_12M AS
+	(
+		select
+			AVG(EARN_12M) MEDIAN
+		from
+		(
+			SELECT
+				*,
+				MAX(RK) over (partition by true)/2 MEDIAN_POS
+			FROM (
+				SELECT 
+					EARN_12M,
+					ROW_NUMBER() OVER (PARTITION BY TRUE ORDER BY EARN_12M) RK
+				FROM EARNINGS
+				WHERE EARN_12M IS NOT NULL
+			) T
+		) T
+		WHERE MEDIAN_POS = RK OR ABS(RK-MEDIAN_POS)=0.5
+	)
+	SELECT
+		AVG(MEDIAN) MEDIAN
+	FROM
+	(
+		select * from MEDIAN_EARN_3M UNION ALL select * from MEDIAN_EARN_6M UNION ALL select * from MEDIAN_EARN_9M UNION ALL select * from MEDIAN_EARN_12M
+	) t
+);
