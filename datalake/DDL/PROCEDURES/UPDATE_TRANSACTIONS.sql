@@ -5,8 +5,8 @@ BEGIN
 	# this procedures scans everytime the transactions_dump table to gather only the last updated transaction values
     # this procudere, while unefficient because it parses the whole dataset each time, accomodates the lack of MERGE statement in MySQL
     
-	DELETE FROM transactions WHERE TRUE;
-    INSERT INTO transactions
+	DELETE FROM TRANSACTIONS WHERE TRUE;
+    INSERT INTO TRANSACTIONS
 	SELECT 
 		FLOW_ID,
 		EXEC,
@@ -27,7 +27,7 @@ BEGIN
 		TR_UOM
 	FROM
 	(
-		SELECT *, ROW_NUMBER() OVER (PARTITION BY PROVIDER,TR_INFO ORDER BY EXEC DESC) RK from transactions_dump
+		SELECT *, ROW_NUMBER() OVER (PARTITION BY PROVIDER,TR_INFO ORDER BY EXEC DESC) RK from TRANSACTIONS_DUMP
 	) L0
 	WHERE RK = 1;
 END;

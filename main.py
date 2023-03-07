@@ -48,7 +48,7 @@ except SQLError as e:
 							cursor.execute(row)
 						conn.commit()
 
-				# populates all views for which dml exists
+				# populates all tables for which dml exists
 				for file in listdir(dml_staging_location):
 					if file == ".gitkeep":
 						continue
@@ -67,12 +67,15 @@ except SQLError as e:
 						cursor.execute(ddl.read())
 
 				# creates all procedures
+				ddl = ""
 				for file in listdir(ddl_location+"\\PROCEDURES"):
 					if file == ".gitkeep":
 						continue
-
-					with open(ddl_location+"\\PROCEDURES\\"+file,"r") as ddl:
-						cursor.execute(ddl.read())
+				
+					with open(ddl_location+"\\PROCEDURES\\"+file,"r") as f:
+						ddl += "\n" + f.read()
+				cursor.execute(ddl)
+				
 				conn.close()
 				
 				print("database created!")
@@ -90,6 +93,10 @@ except SQLError as e:
 				cursor=conn.cursor()
 				print("populating ..")
 				cursor.callproc("update_transactions")
+				cursor.callproc("update_calendar")
+				cursor.callproc("update_earnings")
+				print("..")
+				cursor.callproc("update_revenues")
 				conn.commit()
 				print("db is up to date!")
 		else:
@@ -105,6 +112,11 @@ else:
 		conn.commit()
 		rename(src=dml.name,dst=path.join(dml_ingested_location,filename))
 
+	print("updating db ..")
 	cursor.callproc("update_transactions")
+	cursor.callproc("update_calendar")
+	cursor.callproc("update_earnings")
+	print("..")
+	cursor.callproc("update_revenues")
 	conn.commit()
 	print("db is up to date!")
