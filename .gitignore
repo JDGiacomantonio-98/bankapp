@@ -2,3 +2,4 @@
 /datalake/DML/INGESTED/*.sql
 /datalake/DML/STAGING/*.sql
 /TEST_QUERIES.sql
+/__pycache__
