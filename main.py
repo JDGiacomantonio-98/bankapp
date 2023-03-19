@@ -1,49 +1,40 @@
 from mysql.connector import connect, Error as SQLError
-from os import getenv,path, mkdir, listdir, rename
+from os import path, mkdir, listdir, rename, getcwd
 from time import sleep, process_time
 import webbrowser
 import worker
-
-sql_db_instance = "bankapp"
-sql_db_env = "dev"
-
-app_uri = path.join(getenv('USERPROFILE'),'Desktop','code-workbench',sql_db_instance)
-
-ddl_location= path.join(app_uri,sql_db_env,'datalake','DDL')
-dml_staging_location= path.join(app_uri,sql_db_env,'datalake','DML','STAGING')
-dml_ingested_location= path.join(app_uri,sql_db_env,'datalake','DML','INGESTED')
-
-mps_provider_url = "https://digital.mps.it/pri/login/home_mobile.jsp?_ga=2.215198551.1509105742.1620041788-785024715.1610638296"
+from constants import *
 
 def create_db_if_not_exists(conn, cursor):
-	print(f"creating '{sql_db_instance}' db from scratch ..")
 
-	cursor.execute(f"CREATE DATABASE {sql_db_instance};") # creates db
-	cursor.execute(f"USE {sql_db_instance};")
+	print(f"creating '{SQL_DB_NAME}' db from scratch ..")
+
+	cursor.execute(f"CREATE DATABASE {SQL_DB_NAME};") # creates db
+	cursor.execute(f"USE {SQL_DB_NAME};")
 
 	# creates all tables
 	i = 0
-	for file in listdir(ddl_location+"\\TABLES"):
+	for file in listdir(DDL_TABLE_URI):
 		if file == ".gitkeep":
 			continue
 
-		with open(ddl_location+"\\TABLES\\"+file,"r") as ddl:
+		with open(path.join(DDL_TABLE_URI,file),"r") as ddl:
 			cursor.execute(ddl.read())
 			i+=1
 	print(f"{i} tables created!")
 
 	# populates all tables for which dml exists
 	print("populating tables ..")
-	ingest_data(conn=conn, cursor=cursor, dml_location=dml_ingested_location, deploy_worker=False)
-	ingest_data(conn=conn, cursor=cursor, dml_location=dml_staging_location, deploy_worker=False)
+	ingest_data(conn=conn, cursor=cursor, dml_location=DML_INGESTED_LOCATION, deploy_worker=False)
+	ingest_data(conn=conn, cursor=cursor, dml_location=DML_STAGING_LOCATION, deploy_worker=False)
 
 	# creates all views
 	i = 0
-	for file in listdir(ddl_location+"\\VIEWS"):
+	for file in listdir(DDL_VIEW_URI):
 		if file == ".gitkeep":
 			continue
 
-		with open(ddl_location+"\\VIEWS\\"+file,"r") as ddl:
+		with open(path.join(DDL_VIEW_URI,file),"r") as ddl:
 			cursor.execute(ddl.read())
 			i+=1
 	print(f"{i} views created!")
@@ -51,19 +42,19 @@ def create_db_if_not_exists(conn, cursor):
 	# creates all procedures
 	i=0
 	ddl = ""
-	for file in listdir(ddl_location+"\\PROCEDURES"):
+	for file in listdir(DDL_PROC_URI):
 		if file == ".gitkeep":
 			continue
 	
-		with open(ddl_location+"\\PROCEDURES\\"+file,"r") as f:
+		with open(path.join(DDL_PROC_URI,file),"r") as f:
 			ddl += "\n" + f.read()
 			i+=1
 	cursor.execute(ddl)
 	print(f"{i} procedures created!")
 
-	print(f"database '{sql_db_instance}' successfully created!")
+	print(f"database '{SQL_DB_NAME}' successfully created!")
 
-def ingest_data(conn, cursor, dml_location=dml_staging_location, deploy_worker=True):
+def ingest_data(conn, cursor, dml_location=DML_STAGING_LOCATION, deploy_worker=True):
 
 	if deploy_worker:
 		try:
@@ -72,7 +63,7 @@ def ingest_data(conn, cursor, dml_location=dml_staging_location, deploy_worker=T
 			print()
 			print("No new transaction report found in the Download folder.")
 			if input("Do you want to extract a new transactions report from MPS website? (y/n): ") in "yY":
-				webbrowser.open_new(mps_provider_url)
+				webbrowser.open_new(PROVIDERS["MPS"]["url"])
 				print("waiting for new file to be detected in Download folder ..")
 				sleep(80) # gives user time to login on MPS home banking and extract the report, while offloading process resources
 				i = 1
@@ -106,8 +97,8 @@ def ingest_data(conn, cursor, dml_location=dml_staging_location, deploy_worker=T
 				cursor.execute(row)
 			conn.commit()
 
-		if dml_location!=dml_ingested_location:
-			rename(src=dml.name,dst=path.join(dml_ingested_location,filename))
+		if dml_location!=DML_INGESTED_LOCATION:
+			rename(src=dml.name,dst=path.join(DML_INGESTED_LOCATION,filename))
 
 def elevate_data(conn, cursor):
 	try:
@@ -127,7 +118,7 @@ def elevate_data(conn, cursor):
 		quit()
 	else:
 		conn.commit()
-		print(f"db '{sql_db_instance}' is up to date!")
+		print(f"db '{SQL_DB_NAME}' is up to date!")
 
 def update_db():
 	try:
@@ -137,12 +128,12 @@ def update_db():
 			passwd=input("db login psw: ")
 			)
 		cursor = conn.cursor()
-		cursor.execute(f"USE {sql_db_instance};")
+		cursor.execute(f"USE {SQL_DB_NAME};")
 	except SQLError as e:
 		print("MySQL error: ", e)
 		if e.errno == 1049:
-			print(f"No instance of {sql_db_instance} db found.")
-			if input(f"Create {sql_db_instance} db from scratch? (y/n): ") in "yY":
+			print(f"No instance of {SQL_DB_NAME} db found.")
+			if input(f"Create {SQL_DB_NAME} db from scratch? (y/n): ") in "yY":
 				try:
 					create_db_if_not_exists(conn=conn, cursor=cursor)
 					conn.close()
@@ -155,7 +146,7 @@ def update_db():
 						host="127.0.0.1",
 						user="root",
 						passwd=input("insert psw to elevate data: "),
-						database=sql_db_instance
+						database=SQL_DB_NAME
 					)
 					elevate_data(conn=conn, cursor=conn.cursor())
 			else:
@@ -167,7 +158,7 @@ def update_db():
 
 if __name__ == "__main__":
 	
-	for i in range(0, dml_ingested_location.split(app_uri)[1].count("\\")):
-		mkdir(path.join(app_uri,"\\".join(dml_ingested_location.split(app_uri+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(app_uri,"\\".join(dml_ingested_location.split(app_uri+"\\")[1].split("\\")[0:i+1])))) else next
+	for i in range(0, DML_INGESTED_LOCATION.split(APP_URI)[1].count("\\")):
+		mkdir(path.join(APP_URI,"\\".join(DML_INGESTED_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(APP_URI,"\\".join(DML_INGESTED_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1])))) else next
 
 	update_db()

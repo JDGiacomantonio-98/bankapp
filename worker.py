@@ -1,33 +1,26 @@
 import openpyxl as pyxl
 from time import time,sleep
-from os import path, getenv, mkdir, rename
+from os import path, getenv,getcwd, mkdir, rename
 from random import uniform
 from io import BytesIO
-
-sql_db_instance = "bankapp"
-sql_db_env = "dev"
-sql_tablename = "TRANSACTIONS_DUMP"
-header = "FLOW_ID, EXEC, PROVIDER, TR_DATE, TR_WEEK, TR_MONTH, TR_DAY, TR_WEEKDAY, TR_HOUR, TR_TYPE, TR_LOCATION, TR_BENEFICIARY, TR_METHOD, TR_INFO, TR_VALUE, TR_UOM"
-provider = "MPS"
-
-app_uri = path.join(getenv('USERPROFILE'),'Desktop','code-workbench',sql_db_instance)
-
-sql_dump_uri = path.join(app_uri,sql_db_env,'datalake','DML','STAGING')
-raw_dump_uri = path.join(app_uri,sql_db_env,'dump','provider')
-csv_dump_uri = path.join(app_uri,sql_db_env,'dump','provider','csv')
-
-revenues_owner = "SELF"
+from constants import *
 
 def create_bins():
-	for i in range(0, sql_dump_uri.split(app_uri)[1].count("\\")):
-		mkdir(path.join(app_uri,"\\".join(sql_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(app_uri,"\\".join(sql_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1])))) else next
+	for i in range(0, DML_STAGING_LOCATION.split(APP_URI)[1].count("\\")):
+		mkdir(path.join(APP_URI,"\\".join(DML_STAGING_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(APP_URI,"\\".join(DML_STAGING_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1])))) else next
 
-	for i in range(0, raw_dump_uri.split(app_uri)[1].count("\\")):
-		mkdir(path.join(app_uri,"\\".join(raw_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(app_uri,"\\".join(raw_dump_uri.split(app_uri+"\\")[1].split("\\")[0:i+1])))) else next
-	mkdir(csv_dump_uri) if not(path.isdir(csv_dump_uri)) else next
+	for i in range(0, PROVIDERS["MPS"]["raw_dump"].split(APP_URI)[1].count("\\")):
+		mkdir(path.join(APP_URI,"\\".join(PROVIDERS["MPS"]["raw_dump"].split(APP_URI+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(APP_URI,"\\".join(PROVIDERS["MPS"]["raw_dump"].split(APP_URI+"\\")[1].split("\\")[0:i+1])))) else next
+
+	mkdir(PROVIDERS["MPS"]["csv_dump"]) if not(path.isdir(PROVIDERS["MPS"]["csv_dump"])) else next
 
 def parse_mps_file():
-	landed_file_uri  = path.join(getenv('USERPROFILE'),'Downloads','I miei movimenti conto.xlsx')
+
+	landed_file_uri = path.join(FILE_LANDING_URI,PROVIDERS["MPS"]["filename"])
+
+	sql_tablename = "TRANSACTIONS_DUMP"
+	header = "FLOW_ID, EXEC, PROVIDER, TR_DATE, TR_WEEK, TR_MONTH, TR_DAY, TR_WEEKDAY, TR_HOUR, TR_TYPE, TR_LOCATION, TR_BENEFICIARY, TR_METHOD, TR_INFO, TR_VALUE, TR_UOM"
+	revenues_owner = "SELF"
 
 	try:
 		with open(landed_file_uri, "rb") as f:
@@ -59,7 +52,7 @@ def parse_mps_file():
 		print("parsing new report ..")
 		for r in data.iter_rows(min_col=3, max_col=7, min_row=20, values_only=True):
 			
-			r = ["TRANSACTIONS", exec, provider] + list(r) + ["EUR"] # adds metadata to  payload making it unique even if extraction is repeated w/ same parameters
+			r = ["TRANSACTIONS", exec, PROVIDERS["MPS"]["name"]] + list(r) + ["EUR"] # adds metadata to  payload making it unique even if extraction is repeated w/ same parameters
 			
 			if "Totale" in r[5]:
 				wb.close()
@@ -109,12 +102,26 @@ def parse_mps_file():
 					r.insert(11,None) # beneficiary
 
 			csv += str(r)[1:-1].replace(" '",' "').replace("',",'",') + "\n"
-			sql_insert_dml += f"INSERT INTO {sql_db_instance}.{sql_tablename} ({header}) VALUES ({str(r)[1:-1]});" + "\n"
+			sql_insert_dml += f"INSERT INTO {SQL_DB_NAME}.{sql_tablename} ({header}) VALUES ({str(r)[1:-1]});" + "\n"
 
-		with open(csv_dump_uri+"\\"+csv_name, "w") as f:
-			f.write(csv.replace("\n'",'\n"').replace("'\n",'"\n'))
+		try:
+			with open(PROVIDERS["MPS"]["csv_dump"]+"\\"+csv_name, "w") as f:
+				f.write(csv.replace("\n'",'\n"').replace("'\n",'"\n'))
 
-		with open(sql_dump_uri+"\\"+sql_insert_name, "w") as f:
-			f.write(sql_insert_dml.replace("None","NULL"))
+			with open(DML_STAGING_LOCATION+"\\"+sql_insert_name, "w") as f:
+				f.write(sql_insert_dml.replace("None","NULL"))
 
-		rename(src=landed_file_uri,dst=path.join(raw_dump_uri,processed_filename))
+			rename(src=landed_file_uri,dst=path.join(PROVIDERS["MPS"]["raw_dump"],processed_filename))
+		except Exception:
+			create_bins()
+
+			with open(PROVIDERS["MPS"]["csv_dump"]+"\\"+csv_name, "w") as f:
+				f.write(csv.replace("\n'",'\n"').replace("'\n",'"\n'))
+
+			with open(DML_STAGING_LOCATION+"\\"+sql_insert_name, "w") as f:
+				f.write(sql_insert_dml.replace("None","NULL"))
+
+			rename(src=landed_file_uri,dst=path.join(PROVIDERS["MPS"]["raw_dump"],processed_filename))
+		finally:
+			print("1 new transaction report ready for ingestion!")
+
