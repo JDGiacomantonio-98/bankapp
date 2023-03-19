@@ -15,7 +15,7 @@ PROVIDERS = {
     "MPS":
     {
     	"name":"MPS",
-        "url": "https://digital.mps.it/pri/login/home_mobile.jsp?_ga=2.215198551.1509105742.1620041788-785024715.1610638296",
+        "url": "https://digital.mps.it/pri/login/home_mobile.jsp",
         "filename": "I miei movimenti conto.xlsx",
         "raw_dump": path.join(APP_URI,'dump',"MPS"),
 		"csv_dump": path.join(APP_URI,'dump',"MPS",'csv')
