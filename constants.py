@@ -1,7 +1,11 @@
-from os import path, getcwd, getenv
+from os import path, getenv
+
 
 SQL_DB_NAME = "bankapp"
-APP_URI = getcwd()
+
+# Get the directory path of the current Python script
+APP_URI = path.dirname(path.abspath(__file__))
+
 DDL_URI = path.join(APP_URI,'datalake','DDL')
 DDL_TABLE_URI = path.join(DDL_URI,'TABLES')
 DDL_VIEW_URI = path.join(DDL_URI,'VIEWS')

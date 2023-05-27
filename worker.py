@@ -1,6 +1,6 @@
 import openpyxl as pyxl
 from time import time,sleep
-from os import path, getenv,getcwd, mkdir, rename
+from os import path, getenv, mkdir, rename
 from random import uniform
 from io import BytesIO
 from constants import *

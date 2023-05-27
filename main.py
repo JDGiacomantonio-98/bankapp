@@ -1,5 +1,5 @@
 from mysql.connector import connect, Error as SQLError
-from os import path, mkdir, listdir, rename, getcwd
+from os import path, mkdir, listdir, rename
 from time import sleep, process_time
 import webbrowser
 import worker
@@ -65,22 +65,24 @@ def ingest_data(conn, cursor, dml_location=DML_STAGING_LOCATION, deploy_worker=T
 			if input("Do you want to extract a new transactions report from MPS website? (y/n): ") in "yY":
 				webbrowser.open_new(PROVIDERS["MPS"]["url"])
 				print("waiting for new file to be detected in Download folder ..")
-				sleep(80) # gives user time to login on MPS home banking and extract the report, while offloading process resources
-				i = 1
+				sleep(55) # gives user time to login on MPS home banking and extract the report, while offloading process resources
+				i = 0
 				while True:
 					try:
 						worker.parse_mps_file()
 					except FileNotFoundError:
-						if i == 1:
-							sleep(40)
+						if i == 0:
+							i += 1
+							sleep(15)
 							t = process_time()
 							continue
 
-						if process_time()-t > 59*i:
+						if process_time()-t > 59:
 							if input("Python is waiting for a new file to land on the Dowload folder, do you want to stop it? (y/n) ") in "yY":
 								break
 							else:
-								i+=1 #wait for an additional minute before asking again
+								print("waiting for new file to be detected in Download folder ..")
+								t = process_time() #wait for an additional minute before asking again
 					except Exception as e:
 						print(f"Unknown problem while parsing the report: {e}")
 						print("db update failed.")
@@ -125,7 +127,7 @@ def update_db():
 		conn = connect(
 			host="127.0.0.1",
 			user="root",
-			passwd=input("db login psw: ")
+			passwd=input("psw: ")
 			)
 		cursor = conn.cursor()
 		cursor.execute(f"USE {SQL_DB_NAME};")
@@ -160,5 +162,11 @@ if __name__ == "__main__":
 	
 	for i in range(0, DML_INGESTED_LOCATION.split(APP_URI)[1].count("\\")):
 		mkdir(path.join(APP_URI,"\\".join(DML_INGESTED_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1]))) if not(path.isdir(path.join(APP_URI,"\\".join(DML_INGESTED_LOCATION.split(APP_URI+"\\")[1].split("\\")[0:i+1])))) else next
+	
+	print("")
+	print("+ --------------------------- +")
+	print("| ** BANKAPP UPDATE PROMPT ** |")
+	print("+ --------------------------- +")
+	print("")
 
 	update_db()
